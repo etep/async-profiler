@@ -24,6 +24,9 @@ JAVA_HEADERS := $(patsubst %.java,%.class.h,$(wildcard src/helper/one/profiler/*
 API_SOURCES := $(wildcard src/api/one/profiler/*.java)
 CONVERTER_SOURCES := $(shell find src/converter -name '*.java')
 
+LIB_JATTACH_SRCS := $(filter-out main.c, $(notdir $(wildcard src/jattach/*.c)))
+LIB_JATTACH_OBJS := $(patsubst %.c, build/jattach/%.o, $(LIB_JATTACH_SRCS))
+
 ifeq ($(JAVA_HOME),)
   export JAVA_HOME:=$(shell java -cp . JavaHome)
 endif
@@ -111,10 +114,16 @@ $(PACKAGE_DIR): build/$(LIB_PROFILER) build/$(JATTACH) $(FDTRANSFER_BIN) \
 	-ln -s $(<F) $@
 
 build:
-	mkdir -p build
+	mkdir -p build/jattach
 
 build/$(LIB_PROFILER_SO): $(SOURCES) $(HEADERS) $(JAVA_HEADERS)
 	$(CXX) $(CXXFLAGS) -DPROFILER_VERSION=\"$(PROFILER_VERSION)\" $(INCLUDES) -fPIC -shared -o $@ $(SOURCES) $(LIBS)
+
+build/jattach/%.o: src/jattach/%.c build
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+build/jattach/jattach.a: $(LIB_JATTACH_OBJS)
+	ar rvs $@ $^
 
 build/$(JATTACH): src/jattach/*.c src/jattach/*.h build
 	$(CC) $(CFLAGS) -DJATTACH_VERSION=\"$(PROFILER_VERSION)-ap\" -o $@ src/jattach/*.c
